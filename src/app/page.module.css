@@ -121,22 +121,68 @@
     background: rgba(180, 72, 55, 1);
     color: rgba(255, 255, 255, 1);
     font-weight: 700;
-    transition: transform 0.2s ease-in-out;
+    transition: transform 0.1s ease-in-out;
+    outline: none;
 }
 
 .subscribeButton:hover {
     transform: scale(1.05);
 }
+.subscribeButton:active {
+    transform: scale(0.95);
+}
 
+.subscribeInput:focus {
+    outline: none;
+}
 .subscribeInput::placeholder {
     color: rgba(255, 255, 255, 1);
+}
+
+.error::placeholder {
+    color: rgba(184, 0, 0, 1);
 }
 
 .footer {
     display: flex;
     align-items: center;
-    justify-content: end;
+    justify-content: flex-end;
     padding: 40px;
+}
+
+/* Wrapping */
+.tooltipWrapper {
+    display: inline-block;
+    position: relative;
+}
+
+/* Absolute positioning */
+.tooltip {
+    font-size: 10px;
+    position: absolute;
+    border-radius: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px;
+    color: white;
+    background: rgba(184, 0, 0, 1);
+    line-height: 1;
+    z-index: 100;
+    white-space: nowrap;
+    bottom: -26px;
+}
+
+.tooltip::before {
+    content: " ";
+    left: 50%;
+    border: solid transparent;
+    height: 0;
+    width: 0;
+    position: absolute;
+    pointer-events: none;
+    border-width: 6px;
+    bottom: 100%;
+    border-bottom-color: rgba(184, 0, 0, 1);
 }
 
 @media (max-height: 1050px) {

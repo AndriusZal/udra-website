@@ -3,6 +3,8 @@ import Image from "next/image";
 import styles from "./page.module.css";
 import { DM_Sans } from "next/font/google";
 import { useEffect, useRef, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Database } from "@/../types/database.types";
 
 interface Dimensions {
     width: number;
@@ -12,7 +14,15 @@ interface Dimensions {
 const dm_sans = DM_Sans({
     weight: ["400", "700"],
     style: "normal",
+    subsets: ["latin"],
 });
+
+const supabase = createClient<Database>(
+    "https://gwuruokcvssgnrlmetvj.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3dXJ1b2tjdnNzZ25ybG1ldHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4MDYzNTAsImV4cCI6MjA1ODM4MjM1MH0.EpZWiZACI2KjK2c3AH0vSjObm8Kwjv_fx2jlRtOaRqc"
+);
+
+const placeholder = "Jūsų el. paštas";
 
 const getDynamicWidth = function ({ width }: Dimensions): number {
     const firstDecrease = (x: number) => 0.7 + 0.3 * (1 - (x - 630) / 270);
@@ -27,8 +37,8 @@ const getDynamicWidth = function ({ width }: Dimensions): number {
 };
 
 const getPath = function (width: number, height: number): string {
-    const componentHeight: number = height > 560 ? 550 : 500;
-    const componentWidth: number = width > 700 ? 700 : width < 350 ? 350 : width;
+    const componentHeight = height > 560 ? 550 : 500;
+    const componentWidth = width > 700 ? 700 : width < 350 ? 350 : width;
     return `path("M 20 0 L ${componentWidth - 180} 0 A 20 20 0 0 1 ${componentWidth - 160} 20 L ${componentWidth - 160} 60 A 20 20 0 0 0 ${
         componentWidth - 140
     } 80 L ${componentWidth - 100} 80 A 20 20 0 0 1 ${componentWidth - 80} 100 L ${componentWidth - 80} ${
@@ -45,19 +55,52 @@ const getPath = function (width: number, height: number): string {
 };
 
 export default function Home() {
+    const [email, setEmail] = useState<string>("");
+    const [error, setError] = useState<string>("");
+    const [subscribed, setSubscription] = useState<boolean>(false);
     const [dimensions, setDimensions] = useState<Dimensions>({ width: 0, height: 0 });
     const dynamicTextBox = useRef<HTMLDivElement>(null);
+
+    const validateEmail = (email: string) => {
+        const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+        return regex.test(email);
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!email) {
+            setError("Būtina užpildyti laukelį");
+        } else if (!validateEmail(email)) {
+            setError("Neteisingai įvestas el. pašto adresas");
+        } else {
+            setSubscription(true);
+            setError("");
+            await supabase.from("subscribers").insert({ email: email });
+        }
+    };
+
+    const updateEmail = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (subscribed) {
+            setSubscription(false);
+        }
+        if (error) {
+            setError("");
+        }
+        setEmail(event.target.value);
+    };
+
     useEffect(() => {
+        const element = dynamicTextBox.current;
         const resizeObserver = new ResizeObserver((entries) => {
             const { width, height } = entries[0].contentRect;
             setDimensions({ width, height });
         });
-        if (dynamicTextBox.current) {
-            resizeObserver.observe(dynamicTextBox.current);
+        if (element) {
+            resizeObserver.observe(element);
         }
         return () => {
-            if (dynamicTextBox.current) {
-                resizeObserver.unobserve(dynamicTextBox.current);
+            if (element) {
+                resizeObserver.unobserve(element);
             }
         };
     }, []);
@@ -105,7 +148,7 @@ export default function Home() {
                     }}
                 >
                     <div className={styles.tagline}>
-                        {dimensions.width > 400 && (
+                        {dimensions.width > 420 && (
                             <div className={styles.flag}>
                                 <div className={styles.yellow} />
                                 <div className={styles.green} />
@@ -119,10 +162,26 @@ export default function Home() {
                             Naujas projektas kemperių entuziastams Lietuvoje. Prenumeruokite mūsų naujienlaiškį ir gaukite naujienas apie
                             Udros startą pirmi!
                         </p>
-                        <div className={styles.subscribe}>
-                            <input className={styles.subscribeInput} title="email" placeholder="Jūsų el. paštas"></input>
-                            <button className={`${styles.subscribeButton} ${dm_sans.className}`}>PRENUMERUOTI</button>
-                        </div>
+                        <form className={styles.subscribe} onSubmit={handleSubmit}>
+                            <div className={styles.tooltipWrapper}>
+                                <input
+                                    className={`${styles.subscribeInput} ${error ? styles.error : ""}`}
+                                    title="email"
+                                    value={email}
+                                    onChange={updateEmail}
+                                    placeholder={placeholder}
+                                    style={{ color: error ? "rgba(184, 0, 0, 1)" : "rgba(255, 255, 255, 1)" }}
+                                ></input>
+                                {error && <div className={`${styles.tooltip} ${dm_sans.className}`}>{error}</div>}
+                            </div>
+                            <button
+                                type="submit"
+                                className={`${styles.subscribeButton} ${dm_sans.className}`}
+                                style={subscribed ? { background: "rgba(107, 143, 107, 1)" } : {}}
+                            >
+                                {subscribed ? "AČIŪ" : "PRENUMERUOTI"}
+                            </button>
+                        </form>
                     </div>
                 </div>
             </main>
@@ -130,24 +189,19 @@ export default function Home() {
                 {dimensions.width < 740 && (
                     <div className={`${styles.socialMedia} ${dm_sans.className}`}>
                         <p>Sekite mus: </p>
-                        <Image
-                            style={{ cursor: "pointer" }}
-                            onClick={() => open("https://www.instagram.com/udra_van/")}
-                            src="/instaLogo.svg"
-                            alt="Instagram link"
-                            width={42}
-                            height={41}
-                            priority
-                        />
-                        <Image
-                            style={{ cursor: "pointer" }}
-                            onClick={() => open("https://www.facebook.com/profile.php?id=61571981373934")}
-                            src="/fbLogo.svg"
-                            alt="Facebook Link"
-                            width={42}
-                            height={41}
-                            priority
-                        />
+                        <a target="_blank" rel="noopener" href="https://www.instagram.com/udra_van/">
+                            <Image
+                                style={{ cursor: "pointer" }}
+                                src="/instaLogo.svg"
+                                alt="Instagram link"
+                                width={42}
+                                height={41}
+                                priority
+                            />
+                        </a>
+                        <a target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61571981373934">
+                            <Image style={{ cursor: "pointer" }} src="/fbLogo.svg" alt="Facebook Link" width={42} height={41} priority />
+                        </a>
                     </div>
                 )}
                 <p>© Udra Van, 2025</p>
